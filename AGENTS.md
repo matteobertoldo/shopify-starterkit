@@ -1,0 +1,232 @@
+# Shop Template Guide
+
+This file provides guidance for agents working in the template.
+
+## Recommended Project Plugins
+
+These project-scoped plugins are not required to run the template, but they make agent work in this codebase substantially better. If you're working with an agent that supports them, install with:
+
+```bash
+npx plugins add vercel/shop --scope project --yes
+npx plugins add vercel/vercel-plugin --scope project --yes
+npx plugins add Shopify/shopify-ai-toolkit --scope project --yes
+```
+
+- `vercel-shop` provides storefront-specific skills and commands such as `/vercel-shop:enable-shopify-markets`.
+- `vercel-plugin` provides generic Vercel and Next.js skills.
+- `shopify-ai-toolkit` is authoritative for current Shopify documentation, API schemas, operation validation, and store execution.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
+<!-- END:nextjs-agent-rules -->
+
+## Critical Rules (Always Apply)
+
+1. **Every cart mutation MUST call `invalidateCartCache()`** (from `@/lib/cart/server`) or cache goes stale.
+2. **New user-visible strings go in ALL locale files** (`en.json`, etc.) so the documented multi-locale upgrade path stays mechanical.
+3. **Components in `ui/` must NOT import domain types**. Accept primitive props only and never call `useTranslations`.
+4. **Always use `shopify-ai-toolkit` for Shopify API facts and validation** before adding or changing GraphQL. Use `/vercel-shop:shopify-graphql-reference` afterward for this template's operation placement, transforms, cache role, locale flow, and invalidation. Never treat the Vercel Shop skill as a schema source or guess Shopify fields.
+5. **Every user-configurable `process.env.X` read needs a row in `.env.example`** with a short comment explaining when to set it. If you add a new env var that toggles a feature, document it there so a fresh clone has a complete env reference.
+
+## Storefront Architecture Contract
+
+- Preserve route-level data loading, promise boundaries, cache directives, invalidation tags, metadata, redirects, and auth gates while rebuilding presentation. Change them only when the task explicitly changes behavior.
+- Keep responsibilities layered: routes orchestrate URL and correctness, Shopify operations own fetching/cache/transforms, Server Components compose the shell, client leaves own interaction, and server actions own mutations/invalidation.
+- Model data dependencies before composing the page. Start independent work together and block rendering only where one result is genuinely required by another.
+- Keep stable headings, primary media, and likely LCP content in the static shell when the data contract permits it. Push request-time inputs to the smallest Suspense boundary that needs them.
+- Make visible fallbacks match the resolved section's geometry. A loading state must not introduce avoidable layout shift.
+- Keep Server Components as the default. Isolate state, effects, browser APIs, and event handlers in leaf client components.
+- Use `next/image` with reserved dimensions and truthful `sizes`. Preload only the actual LCP image; keep product grids lazy by default.
+- Treat prefetching as a production-measured traffic-versus-latency choice, especially for high-fanout product grids.
+
+Use `/vercel-shop:build-shop` when the project plugin is installed for the full route-specific workflow and audit guidance.
+
+<!-- BEGIN:vercel-shop-style -->
+
+## Code Style
+
+### Ordering & Organization
+
+- Alphabetize named export specifiers, object destructuring patterns, interface and type properties, config object keys, i18n JSON keys (within each section and at the top level), and string union type members.
+- No barrel files — never create an `index.ts` that only re-exports. Import from the source file directly.
+- oxfmt handles import sorting automatically via `pnpm format`.
+
+### Component Boundaries
+
+- Push `"use client"` as far down the tree as possible. Pages, layouts, and data-fetching wrappers stay as server components.
+- Fetch data in server components or server actions; pass promises or resolved data down to client children.
+
+### File Organization
+
+- Keep sub-components in the same file as their consumer when they share the same directive (or lack one). Only split into a separate file when the components need different directives (e.g., one is `"use client"` and the other is a server component) or when the file becomes unwieldy.
+- A single file per logical component is preferred.
+- When a directive split is necessary, suffix the carved-out file with the directive: `foo.tsx` (the entry, typically a server component) is paired with `foo-client.tsx` for `"use client"` sub-components — e.g. `sidebar.tsx` + `sidebar-client.tsx`, `mobile-tabs.tsx` + `mobile-tabs-client.tsx`. Use `foo-server.tsx` symmetrically if a server-only piece needs to be carved out of an otherwise-client file. The suffix keeps the pair adjacent in the directory listing.
+
+#### `lib/<domain>/` files
+
+Inside a domain folder under `lib/`, name files by execution context — same idea as the directive suffix above, applied to the lib side:
+
+- `index.ts` — universal modules (safe to import from server _and_ client code).
+- `server.ts` — server-only modules. Top-of-file `import "server-only"` when the runtime guard helps.
+- `client.ts` — `"use client"` modules.
+- `action.ts` — `"use server"` server actions (verb + `Action` suffix on each export).
+
+Examples that already follow this: `lib/cart/{action,server}.ts`, `lib/collections/{action,server}.ts`, `lib/auth/{index,server,client}.ts`, `lib/i18n/index.ts`.
+
+Two exceptions that don't fit cleanly:
+
+- A folder grouping multiple modules of the _same_ execution context (one module per resource), like `lib/markdown/` (one generator per route) or `lib/agent/tools/` (one tool per file). Keep descriptive filenames per module — the convention's purpose-by-filename collapses when there are several purpose-equal modules in one folder.
+- Flat single-file modules at `lib/` root (`lib/types.ts`, `lib/config.ts`, `lib/seo.ts`, etc.). They aren't in a domain folder, so the convention doesn't apply.
+
+Avoid the word "client" in a filename to mean an HTTP/SDK client wrapper — that collides with the runtime meaning. Use a verb (`fetch.ts`) or product noun (`shopify.ts`) instead.
+
+### Naming
+
+- Files: `kebab-case.tsx`
+- Components: `PascalCase`
+- Server actions: verb + `Action` suffix (`addToCartAction`)
+- Props interfaces: `{ComponentName}Props`. Use `interface` (not `type`) so consumers can extend or augment.
+- Native-element prop pass-through: use `React.ComponentProps<"div">` (with `import type * as React from "react"`), not `ComponentPropsWithoutRef`. Refs are regular props in React 19, so the extra type is unnecessary noise.
+- Constants: `SCREAMING_SNAKE_CASE`
+
+### Spacing
+
+- `Container` provides horizontal padding and max-width only. It does **not** manage vertical spacing.
+- `Page` (`components/ui/page.tsx`) owns page-level top padding. It defaults to `pt-10` and accepts `className` for overrides — `<Page className="pt-0">` for pages whose first child is flush to the nav (home, PDP), or `<Page className="pt-2.5 md:pt-10">` for search and collection where the title sits tighter to the nav on mobile. `Page` deliberately has no bottom padding; the gap above the footer comes from the footer's own `pt-20`. `Page` doesn't set `flex` by default; layouts that need to fill viewport height (account layout, `not-found`) add `flex flex-1 flex-col` via `className`.
+- For vertical rhythm between sibling sections, wrap them in `<Sections>` (`components/ui/sections.tsx`). Default `gap-10`; override per page via `className` (e.g. `<Sections className="gap-5">`). `<Sections>` happily mixes full-bleed and contained children since each child can be a `<Container>`, a banner, or anything else.
+- Inside a single section, prefer `grid gap-*` on the immediate parent. Don't add `mb-*` / `mt-*` / `my-*` / `space-y-*` to children for inter-sibling spacing.
+- Canonical gap scale: `gap-2.5`, `gap-4`, `gap-5`, `gap-10`. Don't invent new values for the same job.
+- Padding _inside_ a component (button, card, carousel breathing room via `py-*`) is fine. Negative-margin breakouts (`-mx-5`) are fine.
+- This convention is rolled out across the template. New pages should use `<Page>` + `<Sections>` from day one — never put `py-*` on `<Container>`.
+
+### Tailwind & Styling
+
+- **Solve it the Tailwind way, not in `globals.css`.** When you reach for new styling, the first move is a Tailwind utility on the element — not a rule in `app/globals.css`. If the value isn't already a token, register it in `@theme` (e.g. `--font-display: var(--font-bricolage)`) so it becomes a real utility (`font-display`) you can apply per element. Reserve `globals.css` for things that genuinely can't be expressed as a per-element class: theme tokens (`@theme`), CSS resets in `@layer base`, `@keyframes`, and one-off utilities under `@layer utilities` that compose into many components. Adding global element rules (`h1, h2, h3 { ... }`, `a { ... }`) couples styling to markup invisibly and is almost always avoidable.
+- **Watch out for `@theme inline`**: with the `inline` keyword Tailwind inlines the value into utility-class declarations rather than emitting a `:root` CSS variable. So `@theme inline { --font-display: var(--font-bricolage) }` produces a working `font-display` utility but does **not** make `var(--font-display)` resolvable from arbitrary CSS. Reference the underlying variable (`var(--font-bricolage)`) directly if you need it outside a utility.
+- Prefer `data-[attr=value]` selectors over conditional class assembly.
+- Use `cn()` (from `@/lib/utils`) when classes must be conditional.
+- Use `data-slot` attributes as stable styling hooks on compound components.
+- Use CVA (`cva`) for multi-variant component APIs.
+- Interactive elements (buttons, clickable links, CTAs) must use `cursor-pointer`. Disabled interactive elements must use `cursor-not-allowed`.
+
+### Exports
+
+- Named exports only in component files. Pages use default exports per Next.js convention.
+- Alphabetize specifiers in export statements.
+
+### Comments
+
+Default to writing none. Well-named identifiers, types, and tests already document WHAT the code does. Add a comment only when removing it would leave a future reader genuinely confused — and the reason is something they couldn't recover by reading the surrounding code.
+
+A comment earns its place when it captures one of:
+
+- A hidden constraint (e.g. "cookies can't be set during stream").
+- A workaround for a specific upstream/library bug.
+- A non-obvious algorithmic choice or invariant.
+- A cross-system quirk (e.g. "Shopify's `productFilters` only affects facet counts, not results").
+
+**One line max.** If you can't say it in a single line, the code probably needs renaming, splitting, or extracting a constant — not more prose. Long-form context belongs in the PR description, not the source file.
+
+Don't write:
+
+- JSDoc that restates the function name (`/** Verify webhook signature */` over `verifyWebhook()`). Either drop it or replace it with the WHY.
+- Inline comments that narrate the next line (`// fetch products` above `fetchProducts()`).
+- References to current work (`// added for cart refactor`, `// part of issue #123`, `// new`). That belongs in the PR description.
+- File-top banner comments and `// ── Section ──`-style dividers. If a file is large enough that you reach for one, split the file instead.
+- Bare `// TODO` without an owner or actionable reason. Either write `// TODO(handle): explain blocker` or fix the thing now.
+- Multi-paragraph docstrings on simple functions. If the JSDoc fits on one line, inline it; if you reach for multiple paragraphs, that's a signal to split or rename, not to write more prose.
+
+Keep `// eslint-disable-*`, `// @ts-expect-error`, `// biome-ignore`, and other tooling directives — those are not prose comments.
+
+<!-- END:vercel-shop-style -->
+
+## Overview
+
+This is a Next.js 16 storefront template integrated with Shopify. It uses the App Router, React 19, Server Components, Tailwind CSS 4, and pnpm.
+
+The default deployment story is single-locale with clean, unprefixed URLs (`/products/...`). The repo keeps locale catalogs and helpers in place so adding multi-locale routing later is straightforward, but that routing is not enabled by default.
+
+## Development Commands
+
+```bash
+pnpm dev
+pnpm build
+pnpm start
+pnpm lint
+pnpm format
+```
+
+## Directory Structure
+
+- `app/` for routes
+- `lib/shopify/` for Shopify operations, fragments, transforms, and types
+- `lib/types.ts` for provider-agnostic domain types
+- `components/ui/` for presentational primitives
+- `components/product/` for domain-aware product wrappers
+- `next.config.ts` rewrites for variant URL resolution
+
+## Data Flow
+
+```text
+Request → Page → Operation → storefront.request → Shopify API → Transform → Domain type → Component
+```
+
+## Storefront Skills (Optional Plugin)
+
+If the `vercel-shop` plugin is installed (see "Recommended Project Plugins" above), agents have access to slash commands that walk through common storefront extensions:
+
+- Integrating Shopify-validated GraphQL into the template: `/vercel-shop:shopify-graphql-reference`
+- Shopify Markets and multi-locale support: `/vercel-shop:enable-shopify-markets`
+- Locale-prefixed routing + i18n (no Markets): `/vercel-shop:enable-i18n`
+- Shopify metaobject CMS: `/vercel-shop:enable-shopify-cms`
+- Navigation menus: `/vercel-shop:enable-shopify-menus`
+- Analytics: `/vercel-shop:enable-analytics`
+- Storefront architecture, commerce behavior, and rendering performance: `/vercel-shop:build-shop`
+
+These are agent-side conveniences. The template runs and deploys without them.
+
+## Authentication
+
+Customer authentication is built in using better-auth with Shopify Customer Account API OIDC. It is **opt-in**: set `NEXT_PUBLIC_ENABLE_AUTH="1"` to enable it. When the flag is set, `next.config.ts` validates that the three required server-only secrets — `BETTER_AUTH_SECRET`, `SHOPIFY_CUSTOMER_CLIENT_ID`, `SHOPIFY_CUSTOMER_CLIENT_SECRET` — are present and throws a build error if any are missing. The flag is read in `lib/config.ts` and re-exported as `isAuthEnabled` from `lib/auth/index.ts`, keeping server and client in agreement at hydration (safe for cache components).
+
+Key files:
+
+- `lib/auth/index.ts` — universal `isAuthEnabled` flag (safe to import from server and client code)
+- `lib/auth/server.ts` — better-auth config with Shopify OIDC, plus `getCustomerSession()`, `requireSession()`, etc.
+- `lib/auth/client.ts` — `useSession()`, `signIn()`, `signOut()`
+- `app/api/auth/[...all]/route.ts` — OAuth callback handler
+- `app/account/(authenticated)/` — auth-gated account pages
+- `app/account/login/` — login redirect (outside auth gate)
+- `components/nav/account.tsx` — nav icon (async, inside Suspense)
+- `components/account/` — sidebar, tabs, page header, sign-out button
+
+The nav uses a fixed `size-5` container with the fallback icon rendered inline and NavAccount positioned absolutely on top via Suspense — this eliminates layout shift. All account pages use Suspense boundaries for cache components compatibility. The `(authenticated)` route group separates the auth-gated layout from the login page to avoid redirect loops.
+
+## Shopify GraphQL Workflow
+
+- Use the API-specific Shopify AI Toolkit skill first: Storefront GraphQL for catalog/cart/public storefront operations, Customer for authenticated customer data, and custom-data first for metafields or metaobjects.
+- Let Shopify AI Toolkit search current documentation and validate the complete operation. If it is unavailable, use official Shopify documentation and validation tooling; never guess.
+- Use `/vercel-shop:shopify-graphql-reference` afterward for template-specific operation placement, fragments, locale flow, cache role, transforms, invalidation, and route composition.
+- Do not add repo-local schema snapshots or agent-specific folders to the template.
+
+## Key Patterns
+
+- Routes live under `app/` and use clean URLs like `/products/handle`.
+- `getLocale()` resolves the active deployment locale; the template defaults to `en-US`.
+- Multi-locale URL routing is documented in `/vercel-shop:enable-i18n` and is intentionally not enabled by default.
+- Components import domain types from `@/lib/types`, not Shopify response types.
+- Prefer Tailwind data-attribute selectors over conditional class assembly.
+- Follow the `ui/` → `product/` wrapper pattern when adding reusable product UI.
+
+## Configuration
+
+- `next.config.ts`: `cacheComponents: true`, `reactCompiler: true`
+- `.oxlintrc.json`: oxlint linting configuration
+- `.oxfmtrc.json`: oxfmt formatting configuration
+- `components.json`: shadcn/ui configuration
+
+Environment variables are documented in `.env.example`.

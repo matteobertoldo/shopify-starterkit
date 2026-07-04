@@ -1,0 +1,23 @@
+import { HandbagIcon } from "lucide-react";
+import { cookies } from "next/headers";
+
+import { withFallback } from "@/lib/shopify/errors";
+import { getCart } from "@/lib/shopify/operations/cart";
+
+import { CartIconClient } from "./cart-client";
+
+export async function CartIcon() {
+  const cartId = (await cookies()).get("shopify_cartId")?.value;
+  const cart = cartId ? await withFallback(getCart(cartId), undefined) : undefined;
+
+  return <CartIconClient initialCart={cart ?? null} />;
+}
+
+export function CartIconFallback() {
+  return (
+    <span className="flex items-center justify-center gap-1.5 text-foreground">
+      <HandbagIcon className="size-5" />
+      <span className="sr-only">Cart</span>
+    </span>
+  );
+}
