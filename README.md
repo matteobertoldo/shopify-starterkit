@@ -1,4 +1,4 @@
-# Vercel Shop
+# Shopify Starterkit
 
 A Next.js storefront template and reference architecture for Shopify, built with Next.js 16, React 19, Tailwind CSS 4, and the Shopify Storefront API.
 
