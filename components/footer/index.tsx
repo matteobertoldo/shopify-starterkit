@@ -1,29 +1,27 @@
-import { getTranslations } from "next-intl/server";
-import Link from "next/link";
+import { getTranslations } from 'next-intl/server';
+import Link from 'next/link';
 
-import { Container } from "@/components/ui/container";
-import { Sections } from "@/components/ui/sections";
-import { agent, footerItems, siteConfig } from "@/lib/config";
-import type { MenuItem } from "@/lib/shopify/types/menu";
-import { cn } from "@/lib/utils";
+import { Container } from '@/components/ui/container';
+import { Sections } from '@/components/ui/sections';
+import { agent, footerItems, siteConfig } from '@/lib/config';
+import type { MenuItem } from '@/lib/shopify/types/menu';
+import { cn } from '@/lib/utils';
 
-import { SocialLinks } from "./social-links";
+import { SocialLinks } from './social-links';
 
 export async function Footer({ locale }: { locale: string }) {
   const { socialLinks } = siteConfig;
   const items = footerItems;
-  const t = await getTranslations("footer");
+  const t = await getTranslations('footer');
 
   return (
     <footer>
       {/* pb-22 clears the fixed agent ActionBar pill when it renders */}
-      <Container className={cn("pt-20 pb-10", agent.enabled && "pb-22")}>
+      <Container className={cn('pt-20 pb-10', agent.enabled && 'pb-22')}>
         <Sections className="gap-10">
           {items.length > 0 && <FooterMenu items={items} />}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-5">
-            <p className="text-sm text-muted-foreground leading-5">
-              {t("copyright", { name: siteConfig.name })}
-            </p>
+            <p className="text-sm text-muted-foreground leading-5">{t('copyright', { name: siteConfig.name })}</p>
             {socialLinks.length > 0 && <SocialLinks links={socialLinks} />}
           </div>
         </Sections>
@@ -39,7 +37,7 @@ interface MenuLinkProps {
 }
 
 function MenuLink({ url, children, className }: MenuLinkProps) {
-  if (url.startsWith("http")) {
+  if (url.startsWith('http')) {
     return (
       <a href={url} target="_blank" rel="noopener noreferrer" className={className}>
         {children}
@@ -61,10 +59,7 @@ function FooterMenu({ items }: { items: MenuItem[] }) {
       {columns.map((column) => (
         <div key={column.id} className="space-y-3">
           {column.url ? (
-            <MenuLink
-              url={column.url}
-              className="block text-sm font-semibold hover:opacity-70 transition-opacity"
-            >
+            <MenuLink url={column.url} className="block text-sm font-semibold hover:opacity-70 transition-opacity">
               {column.title}
             </MenuLink>
           ) : (
@@ -74,10 +69,7 @@ function FooterMenu({ items }: { items: MenuItem[] }) {
             <ul className="space-y-2">
               {column.items.map((leaf) => (
                 <li key={leaf.id}>
-                  <MenuLink
-                    url={leaf.url}
-                    className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <MenuLink url={leaf.url} className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
                     {leaf.title}
                   </MenuLink>
                 </li>
