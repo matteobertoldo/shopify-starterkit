@@ -1,9 +1,7 @@
-import { tool } from "ai";
-import { z } from "zod";
-
-import { searchIndexProducts } from "@/lib/shopify/operations/products";
-
-import { getAgentContext } from "../server";
+import { tool } from 'ai';
+import { z } from 'zod';
+import { searchIndexProducts } from '@/lib/shopify/operations/products';
+import { getAgentContext } from '../server';
 
 export function searchProductsTool() {
   return tool({
@@ -11,11 +9,8 @@ export function searchProductsTool() {
 Returns a list of matching products with titles, prices, and availability.`,
     inputSchema: z.object({
       query: z.string().describe("Search query (e.g. 'blue jacket', 'wireless speaker')"),
-      sortKey: z
-        .enum(["best-matches", "price-low-to-high", "price-high-to-low"])
-        .default("best-matches")
-        .describe("How to sort results"),
-      limit: z.number().min(1).max(10).default(5).describe("Number of results to return (max 10)"),
+      sortKey: z.enum(['best-matches', 'price-low-to-high', 'price-high-to-low']).default('best-matches').describe('How to sort results'),
+      limit: z.number().min(1).max(10).default(5).describe('Number of results to return (max 10)')
     }),
     execute: async ({ query, sortKey, limit }) => {
       const { user } = getAgentContext();
@@ -25,7 +20,7 @@ Returns a list of matching products with titles, prices, and availability.`,
           query,
           sortKey,
           limit,
-          locale: user.locale,
+          locale: user.locale
         });
 
         return {
@@ -35,21 +30,19 @@ Returns a list of matching products with titles, prices, and availability.`,
             title: p.title,
             handle: p.handle,
             price: `${p.price.amount} ${p.price.currencyCode}`,
-            compareAtPrice: p.compareAtPrice
-              ? `${p.compareAtPrice.amount} ${p.compareAtPrice.currencyCode}`
-              : null,
+            compareAtPrice: p.compareAtPrice ? `${p.compareAtPrice.amount} ${p.compareAtPrice.currencyCode}` : null,
             available: p.availableForSale,
             vendor: p.vendor,
-            image: p.featuredImage?.url ?? null,
-          })),
+            image: p.featuredImage?.url ?? null
+          }))
         };
       } catch (error) {
-        console.error("Failed to search products:", error);
+        console.error('Failed to search products:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : "Failed to search products",
+          error: error instanceof Error ? error.message : 'Failed to search products'
         };
       }
-    },
+    }
   });
 }

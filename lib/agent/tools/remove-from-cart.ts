@@ -1,9 +1,7 @@
-import { tool } from "ai";
-import { z } from "zod";
-
-import { removeFromCart } from "@/lib/shopify/operations/cart";
-
-import { getAgentContext } from "../server";
+import { tool } from 'ai';
+import { z } from 'zod';
+import { removeFromCart } from '@/lib/shopify/operations/cart';
+import { getAgentContext } from '../server';
 
 export function removeFromCartTool() {
   return tool({
@@ -11,9 +9,7 @@ export function removeFromCartTool() {
 IMPORTANT: You must call getCart first to get the lineId of the item to remove.
 Use the lineId from getCart results, not the product or variant ID.`,
     inputSchema: z.object({
-      lineId: z
-        .string()
-        .describe("The cart line item ID from getCart results (e.g. 'gid://shopify/CartLine/...')"),
+      lineId: z.string().describe("The cart line item ID from getCart results (e.g. 'gid://shopify/CartLine/...')")
     }),
     execute: async ({ lineId }) => {
       const { cart: cartId } = getAgentContext();
@@ -21,7 +17,7 @@ Use the lineId from getCart results, not the product or variant ID.`,
       if (!cartId) {
         return {
           success: false,
-          error: "Cart not initialized. Please try again.",
+          error: 'Cart not initialized. Please try again.'
         };
       }
 
@@ -30,16 +26,16 @@ Use the lineId from getCart results, not the product or variant ID.`,
 
         return {
           success: true,
-          message: "Item removed from cart",
-          cart: updatedCart,
+          message: 'Item removed from cart',
+          cart: updatedCart
         };
       } catch (error) {
-        console.error("Failed to remove from cart:", error);
+        console.error('Failed to remove from cart:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : "Failed to remove item from cart",
+          error: error instanceof Error ? error.message : 'Failed to remove item from cart'
         };
       }
-    },
+    }
   });
 }

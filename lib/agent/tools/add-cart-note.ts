@@ -1,15 +1,13 @@
-import { tool } from "ai";
-import { z } from "zod";
-
-import { updateCartNote } from "@/lib/shopify/operations/cart";
-
-import { getAgentContext } from "../server";
+import { tool } from 'ai';
+import { z } from 'zod';
+import { updateCartNote } from '@/lib/shopify/operations/cart';
+import { getAgentContext } from '../server';
 
 export function addCartNoteTool() {
   return tool({
     description: `Add or update a note on the cart. Use this for special instructions, gift messages, or delivery notes.`,
     inputSchema: z.object({
-      note: z.string().describe("The note to add to the cart (e.g. 'Please gift wrap this order')"),
+      note: z.string().describe("The note to add to the cart (e.g. 'Please gift wrap this order')")
     }),
     execute: async ({ note }) => {
       const { cart: cartId } = getAgentContext();
@@ -17,7 +15,7 @@ export function addCartNoteTool() {
       if (!cartId) {
         return {
           success: false,
-          error: "Cart not initialized. Please try again.",
+          error: 'Cart not initialized. Please try again.'
         };
       }
 
@@ -27,22 +25,22 @@ export function addCartNoteTool() {
         if (!result) {
           return {
             success: false,
-            error: "Failed to update cart note",
+            error: 'Failed to update cart note'
           };
         }
 
         return {
           success: true,
-          message: "Cart note updated",
-          cart: result.cart,
+          message: 'Cart note updated',
+          cart: result.cart
         };
       } catch (error) {
-        console.error("Failed to add cart note:", error);
+        console.error('Failed to add cart note:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : "Failed to add cart note",
+          error: error instanceof Error ? error.message : 'Failed to add cart note'
         };
       }
-    },
+    }
   });
 }

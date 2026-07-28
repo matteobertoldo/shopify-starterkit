@@ -1,17 +1,11 @@
-import type { StaticImageData } from "next/image";
-
-import type { Locale } from "@/lib/i18n";
+import type { StaticImageData } from 'next/image';
+import type { Locale } from '@/lib/i18n';
 
 export type SearchParamsPromise = Promise<Record<string, string | string[] | undefined>>;
-
 export type NormalizedSearchParams = Record<string, string | undefined>;
 
-export function normalizeSearchParams(
-  params: Record<string, string | string[] | undefined>,
-): NormalizedSearchParams {
-  return Object.fromEntries(
-    Object.entries(params).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value]),
-  );
+export function normalizeSearchParams(params: Record<string, string | string[] | undefined>): NormalizedSearchParams {
+  return Object.fromEntries(Object.entries(params).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value]));
 }
 
 // These types are the contract between data sources and components. Each
@@ -206,8 +200,7 @@ export interface DiscountCode {
 }
 
 export type DiscountAllocation =
-  | { kind: "code"; code: string; discountedAmount: Money }
-  | { kind: "automatic" | "custom"; title: string; discountedAmount: Money };
+  { kind: 'code'; code: string; discountedAmount: Money } | { kind: 'automatic' | 'custom'; title: string; discountedAmount: Money };
 
 export interface AppliedGiftCard {
   amountUsed: Money;
@@ -253,9 +246,9 @@ export interface CollectionWithThumbnail extends Collection {
   thumbnail: Image | null;
 }
 
-export type FilterPresentation = "image" | "swatch" | "text";
+export type FilterPresentation = 'image' | 'swatch' | 'text';
 
-export type FilterType = "boolean" | "list" | "price";
+export type FilterType = 'boolean' | 'list' | 'price';
 
 export interface FilterValue {
   count: number;

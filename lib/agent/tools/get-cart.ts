@@ -1,9 +1,7 @@
-import { tool } from "ai";
-import { z } from "zod";
-
-import { getCart } from "@/lib/shopify/operations/cart";
-
-import { getAgentContext } from "../server";
+import { tool } from 'ai';
+import { z } from 'zod';
+import { getCart } from '@/lib/shopify/operations/cart';
+import { getAgentContext } from '../server';
 
 export function getCartTool() {
   return tool({
@@ -17,8 +15,8 @@ Use this when the user asks "what's in my cart?", "how much is my order?", or wh
         return {
           success: true,
           empty: true,
-          message: "Cart is empty",
-          items: [],
+          message: 'Cart is empty',
+          items: []
         };
       }
 
@@ -29,8 +27,8 @@ Use this when the user asks "what's in my cart?", "how much is my order?", or wh
           return {
             success: true,
             empty: true,
-            message: "Cart is empty",
-            items: [],
+            message: 'Cart is empty',
+            items: []
           };
         }
 
@@ -47,9 +45,7 @@ Use this when the user asks "what's in my cart?", "how much is my order?", or wh
             productTitle: line.merchandise.product.title,
             variantTitle: line.merchandise.title,
             image: line.merchandise.product.featuredImage?.url ?? null,
-            options: line.merchandise.selectedOptions
-              .map((o) => `${o.name}: ${o.value}`)
-              .join(", "),
+            options: line.merchandise.selectedOptions.map((o) => `${o.name}: ${o.value}`).join(', '),
             quantity: line.quantity,
             totalPrice: `${line.cost.totalAmount.amount} ${line.cost.totalAmount.currencyCode}`,
             handle: line.merchandise.product.handle,
@@ -57,18 +53,18 @@ Use this when the user asks "what's in my cart?", "how much is my order?", or wh
             components: line.components.map((component) => ({
               productTitle: component.merchandise.product.title,
               quantity: component.quantity,
-              variantTitle: component.merchandise.title,
-            })),
+              variantTitle: component.merchandise.title
+            }))
           })),
-          cart,
+          cart
         };
       } catch (error) {
-        console.error("Failed to get cart:", error);
+        console.error('Failed to get cart:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : "Failed to get cart",
+          error: error instanceof Error ? error.message : 'Failed to get cart'
         };
       }
-    },
+    }
   });
 }

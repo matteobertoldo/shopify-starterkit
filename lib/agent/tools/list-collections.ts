@@ -1,9 +1,7 @@
-import { tool } from "ai";
-import { z } from "zod";
-
-import { getCollections } from "@/lib/shopify/operations/collections";
-
-import { getAgentContext } from "../server";
+import { tool } from 'ai';
+import { z } from 'zod';
+import { getCollections } from '@/lib/shopify/operations/collections';
+import { getAgentContext } from '../server';
 
 export function listCollectionsTool() {
   return tool({
@@ -20,16 +18,16 @@ Use this when the user asks "what categories do you have?", "show me your depart
           collections: collections.map((c) => ({
             title: c.title,
             handle: c.handle,
-            description: c.description,
-          })),
+            description: c.description
+          }))
         };
       } catch (error) {
-        console.error("Failed to list collections:", error);
+        console.error('Failed to list collections:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : "Failed to list collections",
+          error: error instanceof Error ? error.message : 'Failed to list collections'
         };
       }
-    },
+    }
   });
 }

@@ -1,9 +1,7 @@
-import { tool } from "ai";
-import { z } from "zod";
-
-import { updateCart } from "@/lib/shopify/operations/cart";
-
-import { getAgentContext } from "../server";
+import { tool } from 'ai';
+import { z } from 'zod';
+import { updateCart } from '@/lib/shopify/operations/cart';
+import { getAgentContext } from '../server';
 
 export function updateCartItemTool() {
   return tool({
@@ -11,10 +9,8 @@ export function updateCartItemTool() {
 IMPORTANT: You must call getCart first to get the lineId of the item to update.
 Use the lineId from getCart results, not the product or variant ID.`,
     inputSchema: z.object({
-      lineId: z
-        .string()
-        .describe("The cart line item ID from getCart results (e.g. 'gid://shopify/CartLine/...')"),
-      quantity: z.number().min(1).max(99).describe("New quantity for the item"),
+      lineId: z.string().describe("The cart line item ID from getCart results (e.g. 'gid://shopify/CartLine/...')"),
+      quantity: z.number().min(1).max(99).describe('New quantity for the item')
     }),
     execute: async ({ lineId, quantity }) => {
       const { cart: cartId } = getAgentContext();
@@ -22,7 +18,7 @@ Use the lineId from getCart results, not the product or variant ID.`,
       if (!cartId) {
         return {
           success: false,
-          error: "Cart not initialized. Please try again.",
+          error: 'Cart not initialized. Please try again.'
         };
       }
 
@@ -32,15 +28,15 @@ Use the lineId from getCart results, not the product or variant ID.`,
         return {
           success: true,
           message: `Updated quantity to ${quantity}`,
-          cart: updatedCart,
+          cart: updatedCart
         };
       } catch (error) {
-        console.error("Failed to update cart item:", error);
+        console.error('Failed to update cart item:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : "Failed to update cart item",
+          error: error instanceof Error ? error.message : 'Failed to update cart item'
         };
       }
-    },
+    }
   });
 }

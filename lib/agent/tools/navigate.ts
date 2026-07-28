@@ -1,5 +1,5 @@
-import { tool } from "ai";
-import { z } from "zod";
+import { tool } from 'ai';
+import { z } from 'zod';
 
 export function navigateTool() {
   return tool({
@@ -8,65 +8,52 @@ Use this when the user says "take me to...", "show me...", "go to...", or you wa
 Returns a URL that the user can click to navigate.`,
     inputSchema: z.object({
       destination: z
-        .enum([
-          "product",
-          "collection",
-          "search",
-          "cart",
-          "account",
-          "orders",
-          "addresses",
-          "checkout",
-          "home",
-        ])
-        .describe("The type of page to navigate to"),
-      identifier: z
-        .string()
-        .optional()
-        .describe("Product handle, collection handle, or search query (depending on destination)"),
+        .enum(['product', 'collection', 'search', 'cart', 'account', 'orders', 'addresses', 'checkout', 'home'])
+        .describe('The type of page to navigate to'),
+      identifier: z.string().optional().describe('Product handle, collection handle, or search query (depending on destination)')
     }),
     execute: async ({ destination, identifier }) => {
       const urls: Record<string, { url: string; label: string }> = {
-        home: { url: "/", label: "Home" },
-        cart: { url: "/cart", label: "Shopping Cart" },
-        account: { url: "/account/profile", label: "Your Profile" },
-        orders: { url: "/account/orders", label: "Your Orders" },
+        home: { url: '/', label: 'Home' },
+        cart: { url: '/cart', label: 'Shopping Cart' },
+        account: { url: '/account/profile', label: 'Your Profile' },
+        orders: { url: '/account/orders', label: 'Your Orders' },
         addresses: {
-          url: "/account/addresses",
-          label: "Your Addresses",
-        },
+          url: '/account/addresses',
+          label: 'Your Addresses'
+        }
       };
 
-      if (destination === "product" && identifier) {
+      if (destination === 'product' && identifier) {
         return {
           success: true,
           url: `/products/${identifier}`,
-          label: `View Product`,
+          label: `View Product`
         };
       }
 
-      if (destination === "collection" && identifier) {
+      if (destination === 'collection' && identifier) {
         return {
           success: true,
           url: `/collections/${identifier}`,
-          label: `Browse Collection`,
+          label: `Browse Collection`
         };
       }
 
-      if (destination === "search") {
-        const query = identifier ? `?q=${encodeURIComponent(identifier)}` : "";
+      if (destination === 'search') {
+        const query = identifier ? `?q=${encodeURIComponent(identifier)}` : '';
         return {
           success: true,
           url: `/search${query}`,
-          label: identifier ? `Search for "${identifier}"` : "Search",
+          label: identifier ? `Search for "${identifier}"` : 'Search'
         };
       }
 
-      if (destination === "checkout") {
+      if (destination === 'checkout') {
         return {
           success: true,
-          url: "/cart",
-          label: "Go to Cart to Checkout",
+          url: '/cart',
+          label: 'Go to Cart to Checkout'
         };
       }
 
@@ -74,14 +61,14 @@ Returns a URL that the user can click to navigate.`,
       if (route) {
         return {
           success: true,
-          ...route,
+          ...route
         };
       }
 
       return {
         success: false,
-        error: `Unknown destination: ${destination}`,
+        error: `Unknown destination: ${destination}`
       };
-    },
+    }
   });
 }

@@ -1,33 +1,32 @@
-import { stepCountIs, ToolLoopAgent, type ToolLoopAgentSettings } from "ai";
-
-import { catalog } from ".";
-import { siteConfig } from "../config";
-import type { Locale } from "../i18n";
-import type { ProductDetails } from "../types";
-import { addCartNoteTool } from "./tools/add-cart-note";
-import { addToCartTool } from "./tools/add-to-cart";
-import { browseCollectionTool } from "./tools/browse-collection";
-import { getCartTool } from "./tools/get-cart";
-import { getProductDetailsTool } from "./tools/get-product-details";
-import { getRecommendationsTool } from "./tools/get-recommendations";
-import { listCollectionsTool } from "./tools/list-collections";
-import { navigateTool } from "./tools/navigate";
-import { removeFromCartTool } from "./tools/remove-from-cart";
-import { searchProductsTool } from "./tools/search-products";
-import { updateCartItemTool } from "./tools/update-cart-item";
+import { stepCountIs, ToolLoopAgent, type ToolLoopAgentSettings } from 'ai';
+import { catalog } from '.';
+import { siteConfig } from '../config';
+import type { Locale } from '../i18n';
+import type { ProductDetails } from '../types';
+import { addCartNoteTool } from './tools/add-cart-note';
+import { addToCartTool } from './tools/add-to-cart';
+import { browseCollectionTool } from './tools/browse-collection';
+import { getCartTool } from './tools/get-cart';
+import { getProductDetailsTool } from './tools/get-product-details';
+import { getRecommendationsTool } from './tools/get-recommendations';
+import { listCollectionsTool } from './tools/list-collections';
+import { navigateTool } from './tools/navigate';
+import { removeFromCartTool } from './tools/remove-from-cart';
+import { searchProductsTool } from './tools/search-products';
+import { updateCartItemTool } from './tools/update-cart-item';
 
 export type User = {
-  type: "guest";
+  type: 'guest';
   locale: Locale;
 };
 
 /** Resolved server-side from the Referer header with trusted data. */
 export type PageContext =
-  | { type: "home" }
-  | { type: "product"; product: ProductDetails }
-  | { type: "collection"; handle: string; title: string }
-  | { type: "search"; query: string }
-  | { type: "cart" }
+  | { type: 'home' }
+  | { type: 'product'; product: ProductDetails }
+  | { type: 'collection'; handle: string; title: string }
+  | { type: 'search'; query: string }
+  | { type: 'cart' }
   | null;
 
 export interface AgentContext {
@@ -53,21 +52,18 @@ export function setUser(user: User) {
 export function getAgentContext() {
   const ctx = agentContext.getStore();
   if (!ctx) {
-    throw new Error("Agent context not found");
+    throw new Error('Agent context not found');
   }
   return ctx;
 }
 
 /** Strip common leading whitespace from a tagged template literal. */
 function dedent(strings: TemplateStringsArray, ...values: unknown[]): string {
-  let raw = strings.reduce(
-    (acc, str, i) => acc + str + (i < values.length ? String(values[i]) : ""),
-    "",
-  );
-  raw = raw.replace(/^\n/, "");
+  let raw = strings.reduce((acc, str, i) => acc + str + (i < values.length ? String(values[i]) : ''), '');
+  raw = raw.replace(/^\n/, '');
   const match = raw.match(/^[ \t]+/m);
   if (match) {
-    raw = raw.replace(new RegExp(`^${match[0]}`, "gm"), "");
+    raw = raw.replace(new RegExp(`^${match[0]}`, 'gm'), '');
   }
   return raw.trimEnd();
 }
@@ -96,22 +92,22 @@ function createSystemPrompt(ctx: AgentContext) {
     - **Navigation**: Guide users to any page on the site (products, collections, search, cart)
   `;
 
-  if (page?.type === "home") {
+  if (page?.type === 'home') {
     prompt += dedent`\n
       ## Current Page Context
 
       The user is on the home page.
       Help them discover products, browse collections, or get started shopping.
     `;
-  } else if (page?.type === "product") {
+  } else if (page?.type === 'product') {
     const { product } = page;
     const variantInfo = (product.variants ?? [])
       .map((v) => {
-        const options = v.selectedOptions.map((o) => `${o.name}: ${o.value}`).join(", ");
-        const stock = v.availableForSale ? "in stock" : "out of stock";
+        const options = v.selectedOptions.map((o) => `${o.name}: ${o.value}`).join(', ');
+        const stock = v.availableForSale ? 'in stock' : 'out of stock';
         return `  - "${v.title}" (${options}) - ${v.price.amount} ${v.price.currencyCode} [${stock}]\n    variant_id: ${v.id}`;
       })
-      .join("\n");
+      .join('\n');
 
     prompt += dedent`\n
       ## Current Page Context
@@ -120,37 +116,37 @@ function createSystemPrompt(ctx: AgentContext) {
 
       **${product.title}**
       - Handle: ${product.handle}
-      - Price: ${product.price.amount} ${product.price.currencyCode}${product.compareAtPrice ? ` (was ${product.compareAtPrice.amount} ${product.compareAtPrice.currencyCode})` : ""}
-      - Available: ${product.availableForSale ? "Yes" : "No"}
-      - Image: ${product.featuredImage?.url || "none"}
+      - Price: ${product.price.amount} ${product.price.currencyCode}${product.compareAtPrice ? ` (was ${product.compareAtPrice.amount} ${product.compareAtPrice.currencyCode})` : ''}
+      - Available: ${product.availableForSale ? 'Yes' : 'No'}
+      - Image: ${product.featuredImage?.url || 'none'}
 
       Description: ${product.description}
 
       ### Available Variants
       ${variantInfo}
 
-      When the user asks about "this product", "this item", or the current product, render an AgentProductCard for it using the data above (price as "${product.price.amount} ${product.price.currencyCode}"${product.compareAtPrice ? `, compareAtPrice as "${product.compareAtPrice.amount} ${product.compareAtPrice.currencyCode}"` : ""}).
+      When the user asks about "this product", "this item", or the current product, render an AgentProductCard for it using the data above (price as "${product.price.amount} ${product.price.currencyCode}"${product.compareAtPrice ? `, compareAtPrice as "${product.compareAtPrice.amount} ${product.compareAtPrice.currencyCode}"` : ''}).
 
       When the user says "add this to cart", "add to cart", or similar:
       1. If there's only one variant, use that variant_id directly
       2. If there are multiple variants, ask which one they want (size, color, etc.)
       3. Use the exact variant_id from the list above when calling addToCart
     `;
-  } else if (page?.type === "collection") {
+  } else if (page?.type === 'collection') {
     prompt += dedent`\n
       ## Current Page Context
 
       The user is browsing the "${page.title}" collection (handle: "${page.handle}").
       You can use the browseCollection tool with this handle to show them products, or help them find specific items.
     `;
-  } else if (page?.type === "search") {
+  } else if (page?.type === 'search') {
     prompt += dedent`\n
       ## Current Page Context
 
-      The user is on the search page${page.query ? `, searching for "${page.query}"` : ""}.
+      The user is on the search page${page.query ? `, searching for "${page.query}"` : ''}.
       You can help refine their search or provide more details about products they find.
     `;
-  } else if (page?.type === "cart") {
+  } else if (page?.type === 'cart') {
     prompt += dedent`\n
       ## Current Page Context
 
@@ -160,18 +156,18 @@ function createSystemPrompt(ctx: AgentContext) {
   }
 
   prompt +=
-    "\n\n" +
+    '\n\n' +
     catalog.prompt({
-      mode: "chat",
+      mode: 'chat',
       customRules: [
-        "When product tools (searchProducts, browseCollection, getProductRecommendations, getProductDetails) return successfully, ALWAYS render the products using AgentProductCard components inside an AgentProductGrid.",
-        "For a single product detail result, use one AgentProductCard without an AgentProductGrid wrapper.",
-        "Pass price and compareAtPrice strings directly from tool results as props.",
-        "Include conversational text before or after the product cards to provide context.",
-        "When getCart returns a non-empty cart (empty: false), ALWAYS render an AgentCartSummary with the cart data. Pass items (including image and any bundle components), subtotal, total, totalQuantity, and checkoutUrl directly from the tool result.",
-        "After a successful addToCart call, ALWAYS render an AgentCartConfirmation. Use product data from your context (prior search results, product details, or page context) to populate image, title, variant, and price props.",
-        "When a user wants to add a product to cart but hasn't specified a variant, and the product has multiple variants, render an AgentVariantPicker with the product's variants from getProductDetails. Then ask the user which variant they'd like. Do NOT use AgentVariantPicker for single-variant products.",
-      ],
+        'When product tools (searchProducts, browseCollection, getProductRecommendations, getProductDetails) return successfully, ALWAYS render the products using AgentProductCard components inside an AgentProductGrid.',
+        'For a single product detail result, use one AgentProductCard without an AgentProductGrid wrapper.',
+        'Pass price and compareAtPrice strings directly from tool results as props.',
+        'Include conversational text before or after the product cards to provide context.',
+        'When getCart returns a non-empty cart (empty: false), ALWAYS render an AgentCartSummary with the cart data. Pass items (including image and any bundle components), subtotal, total, totalQuantity, and checkoutUrl directly from the tool result.',
+        'After a successful addToCart call, ALWAYS render an AgentCartConfirmation. Use product data from your context (prior search results, product details, or page context) to populate image, title, variant, and price props.',
+        "When a user wants to add a product to cart but hasn't specified a variant, and the product has multiple variants, render an AgentVariantPicker with the product's variants from getProductDetails. Then ask the user which variant they'd like. Do NOT use AgentVariantPicker for single-variant products."
+      ]
     });
 
   return prompt;
@@ -183,7 +179,7 @@ function getSystemPrompt() {
 }
 
 const defaults = {
-  model: "anthropic/claude-sonnet-4.6",
+  model: 'anthropic/claude-sonnet-4.6'
 } satisfies Partial<ToolLoopAgentSettings>;
 
 const tools = {
@@ -197,7 +193,7 @@ const tools = {
   updateCartItemQuantity: updateCartItemTool(),
   removeFromCart: removeFromCartTool(),
   addCartNote: addCartNoteTool(),
-  navigateUser: navigateTool(),
+  navigateUser: navigateTool()
 };
 
 export function createAgent() {
@@ -205,7 +201,7 @@ export function createAgent() {
     ...defaults,
     instructions: getSystemPrompt(),
     stopWhen: stepCountIs(10),
-    tools,
+    tools
   });
 
   return agent;
